@@ -166,7 +166,7 @@ const testing = std.testing;
 test "node" {
     const stree = Tree.init(&words);
     for (stree.root) |i| {
-        if (i > 65) {
+        if (i > 64) {
             std.debug.print("{c} ", .{i});
         } else {
             std.debug.print("{d} ", .{i});
