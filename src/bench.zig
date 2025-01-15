@@ -9,7 +9,7 @@ const radix = @import("radix-trie.zig");
 const wordList = @embedFile("./words.txt");
 const gpa = std.testing.allocator;
 
-const loops = 10_000;
+const loops = 100_000;
 
 const words = [_][]const u8{
     "A",
@@ -61,10 +61,8 @@ pub fn main() !void {
 
     // Init static map
     comptime var mapWords = [_]struct { []const u8 }{.{""}} ** words.len;
-    comptime {
-        for (words, 0..) |word, i| {
-            mapWords[i] = .{word};
-        }
+    inline for (words, &mapWords) |word, *mapWord| {
+        mapWord.* = .{word};
     }
 
     const map = std.StaticStringMap(void).initComptime(mapWords);
@@ -81,7 +79,7 @@ pub fn main() !void {
         for (0..loops) |_| {
             it.index = 0;
             while (it.next()) |val| {
-                _ = tree.find(val, false);
+                _ = tree.find(val, true);
             }
         }
         r.* = timer.read();
@@ -99,7 +97,7 @@ pub fn main() !void {
         for (0..loops) |_| {
             it.index = 0;
             while (it.next()) |val| {
-                _ = map.getLongestPrefixIndex(val);
+                _ = map.get(val);
             }
         }
         r.* = timer.read();

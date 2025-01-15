@@ -67,9 +67,9 @@ const Node = struct {
 
     pub fn insertKey(comptime self: *Self, comptime key: []const u8, comptime val: ?usize) void {
         // Next children
-        for (self.keys, 0..) |k, i| {
+        for (self.keys, self.children) |k, *child| {
             if (key[0] == k) {
-                self.children[i].insert(key[1..], val);
+                child.insert(key[1..], val);
                 return;
             }
         }
@@ -85,6 +85,7 @@ const Node = struct {
         }
     }
 
+    // Inline everything
     pub inline fn find(comptime self: Self, key: []const u8, comptime exact: bool) ?usize {
         // Prefix check
         const partLen = self.part.len;
@@ -94,6 +95,7 @@ const Node = struct {
 
         inline for (self.keys, self.children) |k, child| {
             if (key[partLen] == k)
+                // Recursive inlining
                 return find(child, key[partLen + 1 ..], exact);
         }
 
@@ -103,9 +105,9 @@ const Node = struct {
 
 pub inline fn tree(comptime keys: []const []const u8) Node {
     comptime {
-        var root = Node.init("", 0);
+        var root = Node.init("", null);
 
-        for (keys, 1..) |key, i| {
+        for (keys, 0..) |key, i| {
             root.insertRoot(key, i);
         }
 
