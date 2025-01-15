@@ -96,7 +96,8 @@ const Node = struct {
         inline for (self.keys, self.children) |k, child| {
             if (key[partLen] == k)
                 // Recursive inlining
-                return find(child, key[partLen + 1 ..], exact);
+                if (find(child, key[partLen + 1 ..], exact)) |val|
+                    return val;
         }
 
         return if (exact) null else self.value;
@@ -120,7 +121,7 @@ const testing = std.testing;
 test "node" {
     const stree = tree(&words);
 
-    for (words, 1..) |word, i| {
+    for (words, 0..) |word, i| {
         try testing.expectEqual(i, stree.find(word, true));
     }
 }
