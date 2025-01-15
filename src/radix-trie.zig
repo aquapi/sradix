@@ -113,16 +113,16 @@ pub const Tree = struct {
     const Self = @This();
 
     root: []const u8,
-    pub fn init(comptime keys: []const []const u8) Self {
-        comptime var root = Node.init("", 0);
-
+    pub inline fn init(comptime keys: []const []const u8) Self {
         comptime {
+            var root = Node.init("", 0);
+
             for (keys, 1..) |key, i| {
                 root.insertRoot(key, i);
             }
-        }
 
-        return .{ .root = comptime root.compress() };
+            return .{ .root = root.compress() };
+        }
     }
 
     pub fn search(self: Self, k: []const u8, comptime exact: bool) u8 {
@@ -166,7 +166,7 @@ const testing = std.testing;
 test "node" {
     const stree = Tree.init(&words);
     for (stree.root) |i| {
-        if (i > 64) {
+        if ((i >= 'a' and i <= 'z') or (i >= 'A' and i <= 'Z')) {
             std.debug.print("{c} ", .{i});
         } else {
             std.debug.print("{d} ", .{i});
