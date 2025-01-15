@@ -9,7 +9,7 @@ const radix = @import("radix-trie.zig");
 const wordList = @embedFile("./words.txt");
 const gpa = std.testing.allocator;
 
-const loops = 100_000;
+const loops = 5_000;
 
 const words = [_][]const u8{
     "A",
