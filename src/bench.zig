@@ -79,7 +79,7 @@ pub fn main() !void {
         for (0..loops) |_| {
             it.index = 0;
             while (it.next()) |val| {
-                _ = tree.find(val, true);
+                _ = tree.find(val, false);
             }
         }
         r.* = timer.read();
@@ -97,7 +97,7 @@ pub fn main() !void {
         for (0..loops) |_| {
             it.index = 0;
             while (it.next()) |val| {
-                _ = map.get(val);
+                _ = map.getLongestPrefixIndex(val);
             }
         }
         r.* = timer.read();
