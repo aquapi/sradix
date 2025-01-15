@@ -7,13 +7,13 @@ const Node = struct {
     children: []Self,
     keys: []const u8,
     part: []const u8,
-    value: u8,
+    value: ?usize,
 
-    pub fn init(key: []const u8, val: u8) Self {
+    pub fn init(key: []const u8, val: ?usize) Self {
         return .{ .children = &.{}, .keys = &.{}, .part = key, .value = val };
     }
 
-    pub fn split(self: *Self, idx: usize) void {
+    pub fn split(comptime self: *Self, comptime idx: usize) void {
         // Move the current node up
         var newNode = Self.init(self.part[idx + 1 ..], self.value);
 
@@ -34,7 +34,7 @@ const Node = struct {
         self.value = 0;
     }
 
-    pub fn insert(self: *Self, key: []const u8, val: u8) void {
+    pub fn insert(comptime self: *Self, comptime key: []const u8, comptime val: ?usize) void {
         // Compare the current key
         if (mem.indexOfDiff(u8, key, self.part)) |diff| {
             // Split a new node
@@ -56,7 +56,7 @@ const Node = struct {
         } else self.value = val;
     }
 
-    pub fn appendChild(self: *Self, key: []const u8, val: u8) void {
+    pub fn appendChild(comptime self: *Self, comptime key: []const u8, comptime val: ?usize) void {
         self.keys = self.keys ++ [_]u8{key[0]};
 
         // I'm forced to do this I cannot do otherwise
@@ -65,7 +65,7 @@ const Node = struct {
         self.children = &newChildren;
     }
 
-    pub fn insertKey(self: *Self, key: []const u8, val: u8) void {
+    pub fn insertKey(comptime self: *Self, comptime key: []const u8, comptime val: ?usize) void {
         // Next children
         for (self.keys, 0..) |k, i| {
             if (key[0] == k) {
@@ -77,7 +77,7 @@ const Node = struct {
         self.appendChild(key, val);
     }
 
-    pub fn insertRoot(self: *Self, key: []const u8, val: u8) void {
+    pub fn insertRoot(comptime self: *Self, comptime key: []const u8, comptime val: ?usize) void {
         if (key.len == 0) {
             self.val = val;
         } else {
@@ -85,96 +85,40 @@ const Node = struct {
         }
     }
 
-    pub fn compress(self: Self) []const u8 {
-        const keys = self.keys;
-        const keysLen: u8 = @intCast(keys.len);
+    pub inline fn find(comptime self: Self, key: []const u8, comptime exact: bool) ?usize {
+        // Prefix check
+        const partLen = self.part.len;
+        if (partLen != 0 and !mem.startsWith(u8, key, self.part)) return null;
 
-        var str: []const u8 = &[_]u8{@intCast(self.part.len)} ++ self.part ++ &[_]u8{ self.value, keysLen };
-        if (keysLen == 0) return str;
+        if (key.len == partLen) return self.value;
 
-        var compressedChildren: []const u8 = &[0]u8{};
-
-        var jmp: u8 = keysLen * 2;
-        str = str ++ &[_]u8{ keys[0], jmp };
-        compressedChildren = compressedChildren ++ self.children[0].compress();
-
-        for (self.children[1..], 1..) |child, i| {
-            jmp -= 2;
-            str = str ++ &[_]u8{ keys[i], @intCast(jmp + compressedChildren.len) };
-            compressedChildren = compressedChildren ++ child.compress();
+        inline for (self.keys, self.children) |k, child| {
+            if (key[partLen] == k)
+                return find(child, key[partLen + 1 ..], exact);
         }
 
-        return str ++ compressedChildren;
+        return if (exact) null else self.value;
     }
 };
 
-// I need this later
-pub const Tree = struct {
-    const Self = @This();
+pub inline fn tree(comptime keys: []const []const u8) Node {
+    comptime {
+        var root = Node.init("", 0);
 
-    root: []const u8,
-    pub inline fn init(comptime keys: []const []const u8) Self {
-        comptime {
-            var root = Node.init("", 0);
-
-            for (keys, 1..) |key, i| {
-                root.insertRoot(key, i);
-            }
-
-            return .{ .root = root.compress() };
+        for (keys, 1..) |key, i| {
+            root.insertRoot(key, i);
         }
+
+        return root;
     }
-
-    pub fn search(self: Self, k: []const u8, comptime exact: bool) u8 {
-        var root: []const u8 = self.root;
-        var key: []const u8 = k;
-        var maxIt: u8 = undefined;
-
-        blk: while (true) {
-            // Length check
-            if (key.len < root[0] or !mem.startsWith(u8, key, root[1 .. 1 + root[0]])) return 0;
-
-            // Cut the key and move the root up to the value position
-            key = key[root[0]..];
-            root = root[1 + root[0] ..];
-
-            // Key ended
-            if (key.len == 0) return root[0];
-
-            maxIt = root[1];
-            for (0..maxIt) |_| {
-                // Key check
-                if (key[0] == root[2]) {
-                    // Remove the first character
-                    key = key[1..];
-                    // Move to the position of the children
-                    root = root[2 + root[3] ..];
-                    continue :blk;
-                }
-
-                // Move to next key
-                root = root[2..];
-            }
-
-            return if (exact) 0 else root[0];
-        }
-    }
-};
+}
 
 const words = [_][]const u8{ "aa", "aalii", "aam", "aardvark", "aardwolf", "Aaron", "Aaronic", "Aaronical", "Aaronite", "Aaronitic", "Aaru", "Ab", "aba", "Ababdeh", "Ababua", "abac", "abaca", "abacate", "abacay", "abacinate", "abacination", "abaciscus", "abacist", "aback", "abactinal", "abactinally", "abaction", "abactor", "abaculus", "abacus", "Abadite", "abaff", "abaft", "abaisance", "abaiser", "abaissed" };
 const testing = std.testing;
 test "node" {
-    const stree = Tree.init(&words);
-    for (stree.root) |i| {
-        if ((i >= 'a' and i <= 'z') or (i >= 'A' and i <= 'Z')) {
-            std.debug.print("{c} ", .{i});
-        } else {
-            std.debug.print("{d} ", .{i});
-        }
-    }
-    std.debug.print("\nTesting:\n", .{});
+    const stree = tree(&words);
 
     for (words, 1..) |word, i| {
-        try testing.expectEqual(i, stree.search(word, true));
+        try testing.expectEqual(i, stree.find(word, true));
     }
 }

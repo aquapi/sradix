@@ -5,7 +5,6 @@ const Timer = std.time.Timer;
 const log = std.log.scoped(.bench);
 
 const radix = @import("radix-trie.zig");
-const Tree = radix.Tree;
 
 const wordList = @embedFile("./words.txt");
 const gpa = std.testing.allocator;
@@ -58,7 +57,7 @@ const words = [_][]const u8{
 pub fn main() !void {
     @setEvalBranchQuota(1_000_000);
     // Init tree
-    const tree = Tree.init(&words);
+    const tree = radix.tree(&words);
 
     // Init static map
     comptime var mapWords = [_]struct { []const u8 }{.{""}} ** words.len;
@@ -82,7 +81,7 @@ pub fn main() !void {
         for (0..loops) |_| {
             it.index = 0;
             while (it.next()) |val| {
-                _ = tree.search(val, false);
+                _ = tree.find(val, false);
             }
         }
         r.* = timer.read();
