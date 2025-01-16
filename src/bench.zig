@@ -57,7 +57,7 @@ const words = [_][]const u8{
 pub fn main() !void {
     @setEvalBranchQuota(1_000_000);
     // Init tree
-    const tree = radix.tree(u8).init(words);
+    const tree = radix.Tree(u8).init(words);
 
     // Init static map
     comptime var mapWords = [_]struct { []const u8 }{.{""}} ** words.len;

@@ -1,7 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 
-pub inline fn tree(comptime T: type) type {
+pub inline fn Tree(comptime T: type) type {
     const String = []const T;
 
     return struct {
@@ -139,7 +139,7 @@ pub inline fn tree(comptime T: type) type {
 const words = [_][]const u8{ "aa", "aalii", "aam", "aardvark", "aardwolf", "Aaron", "Aaronic", "Aaronical", "Aaronite", "Aaronitic", "Aaru", "Ab", "aba", "Ababdeh", "Ababua", "abac", "abaca", "abacate", "abacay", "abacinate", "abacination", "abaciscus", "abacist", "aback", "abactinal", "abactinally", "abaction", "abactor", "abaculus", "abacus", "Abadite", "abaff", "abaft", "abaisance", "abaiser", "abaissed" };
 const testing = std.testing;
 test "node" {
-    const stree = tree(u8).init(words);
+    const stree = Tree(u8).init(words);
 
     for (words, 1..) |word, i| {
         try testing.expectEqual(i, stree.get(word));
