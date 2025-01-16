@@ -50,19 +50,19 @@ pub inline fn tree(comptime T: type) type {
 
                 // Cut the key
                 else if (diff == self.part.len) {
-                    self.insertKey(key[self.part.len..], val);
+                    self.appendChild(key[diff..], val);
                 }
 
                 // Split to two nodes
                 else {
                     self.split(diff);
-                    self.appendChild(key[diff..], val);
+                    self.appendChildForce(key[diff..], val);
                 }
             } else self.value = val;
         }
 
         /// Append a new children without checking
-        pub fn appendChild(comptime self: *Self, comptime key: String, comptime val: usize) void {
+        pub fn appendChildForce(comptime self: *Self, comptime key: String, comptime val: usize) void {
             self.keys = self.keys ++ [_]T{key[0]};
 
             // I'm forced to do this I cannot do otherwise
@@ -72,7 +72,12 @@ pub inline fn tree(comptime T: type) type {
         }
 
         /// Append a new children with checking
-        pub fn appendChildSafe(comptime self: *Self, comptime key: String, comptime val: usize) void {
+        pub fn appendChild(comptime self: *Self, comptime key: String, comptime val: usize) void {
+            if (key.len == 0) {
+                self.value = val;
+                return;
+            }
+
             // Next children
             for (self.keys, self.children) |k, *child| {
                 if (key[0] == k) {
@@ -81,15 +86,16 @@ pub inline fn tree(comptime T: type) type {
                 }
             }
 
-            self.appendChild(key, val);
+            self.appendChildForce(key, val);
         }
 
-        /// Append a new child to a root node with checking
-        pub fn appendToRoot(comptime self: *Self, comptime key: String, comptime val: usize) void {
-            if (key.len == 0) {
-                self.val = val;
-            } else {
-                self.appendChildSafe(key, val);
+        /// Initialize a static tree with a list of keys
+        pub inline fn init(comptime keys: anytype) Self {
+            comptime {
+                var root = Self.initNode("", 0);
+                for (keys, 1..) |key, i|
+                    root.appendChild(key, i);
+                return root;
             }
         }
 
@@ -126,15 +132,6 @@ pub inline fn tree(comptime T: type) type {
         /// else null.
         pub inline fn getLongestPrefix(comptime self: Self, key: String) usize {
             return self.find(key, false, self.value);
-        }
-
-        pub inline fn init(comptime keys: anytype) Self {
-            comptime {
-                var root = Self.initNode("", 0);
-                for (keys, 1..) |key, i|
-                    root.appendToRoot(key, i);
-                return root;
-            }
         }
     };
 }
