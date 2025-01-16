@@ -112,15 +112,18 @@ pub inline fn Tree(comptime T: type) type {
             // Exact match
             if (key.len == partLen) return self.value;
 
+            const newFallback = if (exact) fallback else self.value;
+
             // Inline children checks
             inline for (self.keys, self.children) |k, child| {
-                if (key[partLen] == k)
+                if (key[partLen] == k) {
                     // Recursive inlining
-                    return find(child, key[partLen + 1 ..], exact, self.value);
+                    return find(child, key[partLen + 1 ..], exact, newFallback);
+                }
             }
 
             // Path matched but no children matched
-            return if (exact) fallback else self.value;
+            return newFallback;
         }
 
         /// Returns the 1-based index for the key if any, else 0.
@@ -131,7 +134,7 @@ pub inline fn Tree(comptime T: type) type {
         /// Returns the 1-based index of the key that is the longest prefix of `str`
         /// else null.
         pub inline fn getLongestPrefix(comptime self: Self, key: String) usize {
-            return self.find(key, false, self.value);
+            return self.find(key, false, 0);
         }
     };
 }
