@@ -16,6 +16,7 @@ pub inline fn tree(comptime T: type) type {
             return .{ .children = &.{}, .keys = &.{}, .part = key, .value = val };
         }
 
+        // Split the current node to two nodes and keep the reference to the parent node
         pub fn split(comptime self: *Self, comptime idx: usize) void {
             // Move the current node up
             var newNode = Self.initNode(self.part[idx + 1 ..], self.value);
@@ -37,7 +38,8 @@ pub inline fn tree(comptime T: type) type {
             self.value = 0;
         }
 
-        pub fn insert(comptime self: *Self, comptime key: String, comptime val: usize) void {
+        /// Append a new item to the tree with checking
+        pub fn append(comptime self: *Self, comptime key: String, comptime val: usize) void {
             // Compare the current key
             if (mem.indexOfDiff(T, key, self.part)) |diff| {
                 // Split a new node
@@ -59,6 +61,7 @@ pub inline fn tree(comptime T: type) type {
             } else self.value = val;
         }
 
+        /// Append a new children without checking
         pub fn appendChild(comptime self: *Self, comptime key: String, comptime val: usize) void {
             self.keys = self.keys ++ [_]T{key[0]};
 
@@ -68,11 +71,12 @@ pub inline fn tree(comptime T: type) type {
             self.children = &newChildren;
         }
 
-        pub fn insertKey(comptime self: *Self, comptime key: String, comptime val: usize) void {
+        /// Append a new children with checking
+        pub fn appendChildSafe(comptime self: *Self, comptime key: String, comptime val: usize) void {
             // Next children
             for (self.keys, self.children) |k, *child| {
                 if (key[0] == k) {
-                    child.insert(key[1..], val);
+                    child.append(key[1..], val);
                     return;
                 }
             }
@@ -80,29 +84,36 @@ pub inline fn tree(comptime T: type) type {
             self.appendChild(key, val);
         }
 
-        pub fn insertRoot(comptime self: *Self, comptime key: String, comptime val: usize) void {
+        /// Append a new child to a root node with checking
+        pub fn appendToRoot(comptime self: *Self, comptime key: String, comptime val: usize) void {
             if (key.len == 0) {
                 self.val = val;
             } else {
-                self.insertKey(key, val);
+                self.appendChildSafe(key, val);
             }
         }
 
-        // Inline everything
+        /// Search an item in the tree
         pub inline fn find(comptime self: Self, key: String, comptime exact: bool, comptime fallback: usize) usize {
             // Prefix check
             const partLen = self.part.len;
+
+            // Skip check if part is empty
+            // If part doesn't match then return the fallback
             if (partLen != 0 and !mem.startsWith(T, key, self.part))
                 return fallback;
 
+            // Exact match
             if (key.len == partLen) return self.value;
 
+            // Inline children checks
             inline for (self.keys, self.children) |k, child| {
                 if (key[partLen] == k)
                     // Recursive inlining
                     return find(child, key[partLen + 1 ..], exact, self.value);
             }
 
+            // Path matched but no children matched
             return if (exact) fallback else self.value;
         }
 
@@ -120,11 +131,8 @@ pub inline fn tree(comptime T: type) type {
         pub inline fn init(comptime keys: anytype) Self {
             comptime {
                 var root = Self.initNode("", 0);
-
-                for (keys, 1..) |key, i| {
-                    root.insertRoot(key, i);
-                }
-
+                for (keys, 1..) |key, i|
+                    root.appendToRoot(key, i);
                 return root;
             }
         }
