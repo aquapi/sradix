@@ -10,9 +10,9 @@ pub inline fn tree(comptime T: type) type {
         children: []Self,
         keys: String,
         part: String,
-        value: ?usize,
+        value: usize,
 
-        pub fn initNode(key: String, val: ?usize) Self {
+        pub fn initNode(key: String, val: usize) Self {
             return .{ .children = &.{}, .keys = &.{}, .part = key, .value = val };
         }
 
@@ -37,7 +37,7 @@ pub inline fn tree(comptime T: type) type {
             self.value = 0;
         }
 
-        pub fn insert(comptime self: *Self, comptime key: String, comptime val: ?usize) void {
+        pub fn insert(comptime self: *Self, comptime key: String, comptime val: usize) void {
             // Compare the current key
             if (mem.indexOfDiff(T, key, self.part)) |diff| {
                 // Split a new node
@@ -59,7 +59,7 @@ pub inline fn tree(comptime T: type) type {
             } else self.value = val;
         }
 
-        pub fn appendChild(comptime self: *Self, comptime key: String, comptime val: ?usize) void {
+        pub fn appendChild(comptime self: *Self, comptime key: String, comptime val: usize) void {
             self.keys = self.keys ++ [_]T{key[0]};
 
             // I'm forced to do this I cannot do otherwise
@@ -68,7 +68,7 @@ pub inline fn tree(comptime T: type) type {
             self.children = &newChildren;
         }
 
-        pub fn insertKey(comptime self: *Self, comptime key: String, comptime val: ?usize) void {
+        pub fn insertKey(comptime self: *Self, comptime key: String, comptime val: usize) void {
             // Next children
             for (self.keys, self.children) |k, *child| {
                 if (key[0] == k) {
@@ -80,7 +80,7 @@ pub inline fn tree(comptime T: type) type {
             self.appendChild(key, val);
         }
 
-        pub fn insertRoot(comptime self: *Self, comptime key: String, comptime val: ?usize) void {
+        pub fn insertRoot(comptime self: *Self, comptime key: String, comptime val: usize) void {
             if (key.len == 0) {
                 self.val = val;
             } else {
@@ -89,29 +89,39 @@ pub inline fn tree(comptime T: type) type {
         }
 
         // Inline everything
-        pub inline fn find(comptime self: Self, key: String, comptime exact: bool) ?usize {
+        pub inline fn find(comptime self: Self, key: String, comptime exact: bool, comptime fallback: usize) usize {
             // Prefix check
             const partLen = self.part.len;
-            if (partLen != 0 and !mem.startsWith(T, key, self.part)) return null;
+            if (partLen != 0 and !mem.startsWith(T, key, self.part))
+                return fallback;
+
             if (key.len == partLen) return self.value;
 
             inline for (self.keys, self.children) |k, child| {
                 if (key[partLen] == k)
                     // Recursive inlining
-                    return if (find(child, key[partLen + 1 ..], exact)) |val| val
-                        else if (exact) null
-                        else self.value;
+                    return find(child, key[partLen + 1 ..], exact, self.value);
             }
 
-            return if (exact) null
-                else self.value;
+            return if (exact) fallback else self.value;
         }
 
-        pub inline fn init(comptime keys: []const []const T) Self {
-            comptime {
-                var root = Self.initNode("", null);
+        /// Returns the 1-based index for the key if any, else 0.
+        pub inline fn get(comptime self: Self, key: String) usize {
+            return self.find(key, true, 0);
+        }
 
-                for (keys, 0..) |key, i| {
+        /// Returns the 1-based index of the key that is the longest prefix of `str`
+        /// else null.
+        pub inline fn getLongestPrefix(comptime self: Self, key: String) usize {
+            return self.find(key, false, self.value);
+        }
+
+        pub inline fn init(comptime keys: anytype) Self {
+            comptime {
+                var root = Self.initNode("", 0);
+
+                for (keys, 1..) |key, i| {
                     root.insertRoot(key, i);
                 }
 
@@ -124,9 +134,9 @@ pub inline fn tree(comptime T: type) type {
 const words = [_][]const u8{ "aa", "aalii", "aam", "aardvark", "aardwolf", "Aaron", "Aaronic", "Aaronical", "Aaronite", "Aaronitic", "Aaru", "Ab", "aba", "Ababdeh", "Ababua", "abac", "abaca", "abacate", "abacay", "abacinate", "abacination", "abaciscus", "abacist", "aback", "abactinal", "abactinally", "abaction", "abactor", "abaculus", "abacus", "Abadite", "abaff", "abaft", "abaisance", "abaiser", "abaissed" };
 const testing = std.testing;
 test "node" {
-    const stree = tree(u8).init(&words);
+    const stree = tree(u8).init(words);
 
-    for (words, 0..) |word, i| {
-        try testing.expectEqual(i, stree.find(word, true));
+    for (words, 1..) |word, i| {
+        try testing.expectEqual(i, stree.get(word));
     }
 }
